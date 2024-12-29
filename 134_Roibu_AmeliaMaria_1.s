@@ -10,6 +10,7 @@
     down_maxim: .zero 4
     index_linie: .zero 4
     dim_max: .long 1024                  # modificare
+    dim_cur: .zero 4
     vector_memorie: .zero 4194304
     vector_right_maxim: .zero 1024
 
@@ -55,7 +56,7 @@ loopInitial:
     je DELETE
 
     cmp $4, %eax
-    je gresit
+    je DEFRAGMENTATION
 
 ADD:
     pushl $N
@@ -438,8 +439,281 @@ DELETE_afisare:
     incl %ecx
     jmp DELETE_loop
 
-exit:
+DEFRAGMENTATION:
+    movl $0, index_linie
+    movl $0, %ecx
+    movl (%esi, %ecx, 4), %ebx
+    movl %ebx, right_maxim
+    movl $0, %ebx
+    movl $0, %eax
+    
+DEFRAG_loop_mutare:
+    cmpl $0, right_maxim          # daca right_maxim == 0, inseamna ca nu avem elemente pe linie
+    je increment_index_linie_defrag
 
+    cmp %ecx, right_maxim           # for (i = 0; i < right_maxim; i++)
+    jl DEFRAG_preg_afis
+    cmpl $0, (%edi, %ecx, 4)        # if (v[i][j] == 0)
+
+    je increment_ebx
+    movl (%edi, %ecx, 4), %edx
+    cmp %ebx, %ecx
+    jne paralell
+
+    incl %ecx                                  
+    incl %ebx
+    jmp DEFRAG_loop_mutare
+
+increment_index_linie_defrag:
+    addl $1, index_linie
+    movl index_linie, %eax
+    cmpl %eax, down_maxim
+    jl continuare_defrag                 # de aici va continua defragmentationul, dupa ce s a facut "unidimensional"
+    movl (%esi, %eax, 4), %edx
+    cmpl $0, %edx
+    je increment_index_linie_defrag
+    pushl %edx
+    movl $0, %edx
+    mull dim_max                         # eax = i*8
+    movl %eax, dim_cur
+    movl %eax, %ebx
+    movl %eax, %ecx
+    popl %edx
+    addl %eax, %edx
+    movl %edx, right_maxim
+
+    jmp DEFRAG_loop_mutare  
+
+paralell:
+    movl %edx, (%edi, %ebx, 4)       # merg in paralel cu v[i][ebx] = v[i][ecx], unde v[i][ecx] sigur este nenul
+    movl $0, (%edi, %ecx, 4)         # iar pe v[i][ecx] il golesc apoi
+    incl %ecx                                  
+    incl %ebx
+    jmp DEFRAG_loop_mutare
+
+increment_ebx:
+    incl %ecx
+    cmpl $0, (%edi, %ecx, 4)                # dupa ce am gasit un zero, caut prima valoare nenula de dupa
+    jne DEFRAG_loop_mutare
+
+    cmp %ecx, right_maxim
+    jl DEFRAG_preg_afis
+
+    jmp increment_ebx
+
+ceva:
+    movl index_linie, %ecx
+    movl $0, (%esi, %ecx, 4)                # capatul din dreapta actualizat
+    jmp increment_index_linie_defrag
+
+DEFRAG_preg_afis:
+    cmpl %ebx, %eax
+    je ceva
+    decl %ebx
+   
+    movl %ebx, right_maxim                  # in ebx voi avea acum capatul din dreapta actualizat
+    subl %eax, %ebx
+    movl index_linie, %ecx
+    movl %ebx, (%esi, %ecx, 4)
+
+    jmp increment_index_linie_defrag
+    # movl %eax, %ecx                           # for (i = 0; i < right_maxim; i++)
+    # movl (%edi, %ecx, 4), %eax              # eax = primul id
+    # movl $0, left                           # memoria incepe de la blocul zero
+
+continuare_defrag:
+    movl $0, %ecx                   # ecx = indexul liniei in vector_right_maxim
+    movl $0, index_linie
+    
+nr_zero_end:
+    movl index_linie, %ecx
+    cmpl %ecx, down_maxim
+    je DEFRAG_loop_afisare
+
+    movl (%esi, %ecx, 4), %edx      # edx este right_maxim local
+    cmpl $0, %edx
+    je baaaaaaaa
+    movl $1023, %ebx
+    subl %edx, %ebx
+    movl %ebx, %edx
+    cmpl $1, %edx                   # vedem daca avem loc la capatul liniei
+    ja preg_nr_start               # inseamna ca avem loc si vedem ce e pe urmatoarea linie
+    
+    incl %ecx
+    addl $1, index_linie
+    
+    jmp nr_zero_end
+
+baaaaaaaa:
+    movl dim_max, %edx
+    jmp preg_nr_start
+
+preg_nr_start:
+    addl $1, index_linie
+    movl index_linie, %eax
+    pushl %edx
+    movl (%esi, %eax, 4), %edx
+    cmpl $0, %edx
+    je nr_zero_end
+
+    movl $0, %edx
+    mull dim_max                         # eax = i*8
+    
+    movl (%edi, %eax, 4), %ebp          # ebp = primul id
+    popl %edx                           # edx = cate blocuri libere sunt pe randul de deasupra
+
+    movl %eax, %ebx                     # ebx = indicele primului elementul de pe rand
+    jmp nr_start
+
+nr_start:
+    incl %eax
+    
+    cmpl %ebp, (%edi, %eax, 4)
+    je nr_start
+
+    subl %ebx, %eax                     # eax = dimensiunea blocului care ipotetic ar putea fi mutat
+    cmpl %eax, %edx
+    jae modificare_intre_linii
+    jmp nr_zero_end
+
+modificare_intre_linii:
+    pushl %ebx
+    pushl %edx
+    movl index_linie, %ecx
+    movl (%esi, %ecx, 4), %edx
+    incl %edx                           # edx = cate blocuri sunt ocupate pe rand
+    cmpl %eax, %edx                     # daca eax = edx, inseamna ca e un singur element pe rand => right_maxim = 0
+    je eticheta
+    popl %edx
+    movl $0, %ecx                            # (for i = 0; i < eax; i++)
+    jmp loop_golire
+
+eticheta:
+    popl %edx
+    movl $0, (%esi, %ecx, 4)
+    movl $0, %ecx                            # (for i = 0; i < eax; i++)
+    jmp loop_golire
+
+loop_golire:
+    movl $0, (%edi, %ebx, 4)
+    incl %ecx
+    incl %ebx
+    cmpl %ecx, %eax
+    je asdfghjkl
+
+    jmp loop_golire
+
+asdfghjkl:
+    popl %ebx
+    decl %ebx                       # ebx = indicele ultimului element de pe randul anterior
+    movl index_linie, %ecx
+    decl %ecx
+    movl $1023, (%esi, %ecx, 4)        # actualizez right_maxim pe randul anterior
+    movl $0, %ecx                   # (for i = 0; i < eax; i++)
+
+    jmp loop_umplere
+
+loop_umplere:
+    movl %ebp, (%edi, %ebx, 4)
+    incl %ecx
+    decl %ebx
+    cmpl %ecx, %eax
+    je DEFRAGMENTATION
+
+    jmp loop_umplere
+
+DEFRAG_loop_afisare:
+    movl $0, index_linie
+    movl $0, %ecx
+
+    movl (%esi, %ecx, 4), %ebx
+    movl %ebx, right_maxim
+
+DEFRAG_loop:
+    cmp %ecx, right_maxim          # for (j = 0; j < right_maxim; j++)
+    jl increment_index_linie_afisare_defrag
+
+    pushl %edx
+    pushl %eax
+
+    movl index_linie, %eax
+    movl $0, %edx
+    mull dim_max                         # eax = i*8
+    addl %ecx, %eax                 # eax = i*8 + j 
+
+    movl (%edi, %eax, 4), %ebx       # %ebx = v[i][j]
+    popl %eax
+    popl %edx
+
+    cmpl $0, %ebx
+    jne AFIS_mamamia
+
+    incl %ecx
+    jmp DEFRAG_loop
+
+increment_index_linie_afisare_defrag:
+    addl $1, index_linie
+    movl index_linie, %ecx
+    cmpl %ecx, down_maxim
+    jl loopInitial
+
+    movl (%esi, %ecx, 4), %ebx
+    movl %ebx, right_maxim
+
+    movl $0, %ecx
+    jmp DEFRAG_loop  
+
+AFIS_mamamia:
+    movl %ebx, %edx
+    movl %ecx, left
+    jmp DEFRAG_while_loop
+
+DEFRAG_while_loop:
+    incl %ecx
+
+    pushl %edx
+    pushl %eax
+
+    movl index_linie, %eax
+    movl $0, %edx
+    mull dim_max                         # eax = i*8
+    addl %ecx, %eax                 # eax = i*8 + j 
+
+    movl (%edi, %eax, 4), %ebx       # %ebx = v[i][j]
+    popl %eax
+    popl %edx
+
+    cmp %ebx, %edx
+    jne DEFRAG_afisare
+    jmp DEFRAG_while_loop
+
+DEFRAG_afisare:
+    decl %ecx
+    movl %ecx, right
+    
+    pushl right
+    pushl index_linie
+    pushl left
+    pushl index_linie
+    pushl %edx
+    pushl $formatAfisare
+    call printf
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    popl %ebx
+
+    movl right, %ecx
+
+    cmp %ecx, right_maxim          
+    je increment_index_linie_afisare_defrag
+    
+    incl %ecx
+    jmp DEFRAG_loop
+
+exit:
     pushl $0
     call fflush
     popl %ebx
@@ -447,14 +721,6 @@ exit:
     movl $1, %eax
     movl $0, %ebx
     int $0x80
-
-gresit:
-    pushl $0
-    pushl $formattest
-    call printf                      
-    popl %ebx
-    popl %ebx
-    jmp exit
 
 #    pushl %eax
  #   pushl %ebx
