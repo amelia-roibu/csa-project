@@ -9,7 +9,7 @@
     right_maxim: .zero 4
     down_maxim: .zero 4
     index_linie: .zero 4
-    dim_max: .long 1024                  # modificare
+    dim_max: .long 1024             
     dim_cur: .zero 4
     vector_memorie: .zero 4194304
     vector_right_maxim: .zero 1024
@@ -153,7 +153,7 @@ actualizare_down:
 increment_index_linie:
     addl $1, index_linie
 
-    cmpl $1024, index_linie            # modificare
+    cmpl $1024, index_linie           
     je ADD_afisare_false
 
     movl index_linie, %ecx
@@ -164,13 +164,13 @@ increment_index_linie:
     jmp cautareSpatiu
 
 cautareSpatiu:
-    cmpl %ecx, dim_max                   # aici va fi $1024
+    cmpl %ecx, dim_max                   
     je increment_index_linie
 
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     movl (%edi, %eax, 4), %edx
 
@@ -195,8 +195,8 @@ verificareSpatiu:
 
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     movl (%edi, %eax, 4), %edx
     popl %eax
@@ -212,8 +212,8 @@ ADD_fr:                             # daca am ajuns aici, inseamna ca ne pregati
 
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     popl %edx
     movl %edx, (%edi, %eax, 4)
@@ -248,7 +248,7 @@ GET:
 
 GET_loop:
     movl down_maxim, %edx
-    cmpl %edx, index_linie                # modificare
+    cmpl %edx, index_linie                
     ja NO_GET
 
     movl %ecx, left                # pp ca urmatorul ecx este cel bun...
@@ -259,8 +259,8 @@ GET_loop:
     pushl %eax
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     movl (%edi, %eax, 4), %ebx     # valoarea curenta din vector
     popl %eax
@@ -293,8 +293,8 @@ GET_gasit:
     pushl %eax
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     movl (%edi, %eax, 4), %ebx     # valoarea curenta din vector
     popl %eax
@@ -345,8 +345,8 @@ DELETE_loop:
 
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     movl (%edi, %eax, 4), %ebx       # %ebx = v[i][j]
     popl %eax
@@ -385,8 +385,8 @@ DELETE_while_loop:
 
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     movl (%edi, %eax, 4), %ebx       # %ebx = v[i][j]
     popl %eax
@@ -402,8 +402,8 @@ DELETE_gasit:
 
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     movl $0, (%edi, %eax, 4)
     popl %eax
@@ -474,7 +474,7 @@ increment_index_linie_defrag:
     je increment_index_linie_defrag
     pushl %edx
     movl $0, %edx
-    mull dim_max                         # eax = i*8
+    mull dim_max                         # eax = i*1024
     movl %eax, dim_cur
     movl %eax, %ebx
     movl %eax, %ecx
@@ -557,7 +557,7 @@ preg_nr_start:
     je nr_zero_end
 
     movl $0, %edx
-    mull dim_max                         # eax = i*8
+    mull dim_max                         # eax = i*1024
     
     movl (%edi, %eax, 4), %ebp          # ebp = primul id
     popl %edx                           # edx = cate blocuri libere sunt pe randul de deasupra
@@ -638,8 +638,8 @@ DEFRAG_loop:
 
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     movl (%edi, %eax, 4), %ebx       # %ebx = v[i][j]
     popl %eax
@@ -676,8 +676,8 @@ DEFRAG_while_loop:
 
     movl index_linie, %eax
     movl $0, %edx
-    mull dim_max                         # eax = i*8
-    addl %ecx, %eax                 # eax = i*8 + j 
+    mull dim_max                         # eax = i*1024
+    addl %ecx, %eax                 # eax = i*1024 + j 
 
     movl (%edi, %eax, 4), %ebx       # %ebx = v[i][j]
     popl %eax
@@ -721,19 +721,3 @@ exit:
     movl $1, %eax
     movl $0, %ebx
     int $0x80
-
-#    pushl %eax
- #   pushl %ebx
-  #  pushl %ecx
-   # pushl %edx
-
-#    pushl %edx
-#    pushl $formattest
-#    call printf                      
- #   popl %ebx
-  #  popl %ebx
-
-   # pop %edx
-    #pop %ecx
-#    pop %ebx
- #   pop %eax
